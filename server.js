@@ -24,6 +24,14 @@ function getDefaultData() {
       { id: uuidv4(), handler: 'Dom', botName: 'Virgil Lablow', avatar: 'D' },
       { id: uuidv4(), handler: 'Nick', botName: 'Gibson', avatar: 'N' }
     ],
+    users: [
+      { id: uuidv4(), username: 'daniel', password: 'daniel123', handler: 'Daniel', role: 'admin' },
+      { id: uuidv4(), username: 'austin', password: 'austin123', handler: 'Austin', role: 'member' },
+      { id: uuidv4(), username: 'joe', password: 'joe123', handler: 'Joe', role: 'member' },
+      { id: uuidv4(), username: 'kenny', password: 'kenny123', handler: 'Kenny', role: 'member' },
+      { id: uuidv4(), username: 'dom', password: 'dom123', handler: 'Dom', role: 'member' },
+      { id: uuidv4(), username: 'nick', password: 'nick123', handler: 'Nick', role: 'member' }
+    ],
     intakeQueue: [],
     busyBots: [],
     hallOfVictory: [],
@@ -43,7 +51,20 @@ function getDefaultData() {
 function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+      // Migration: add users array if missing (existing installs)
+      if (!data.users) {
+        data.users = [
+          { id: uuidv4(), username: 'daniel', password: 'daniel123', handler: 'Daniel', role: 'admin' },
+          { id: uuidv4(), username: 'austin', password: 'austin123', handler: 'Austin', role: 'member' },
+          { id: uuidv4(), username: 'joe', password: 'joe123', handler: 'Joe', role: 'member' },
+          { id: uuidv4(), username: 'kenny', password: 'kenny123', handler: 'Kenny', role: 'member' },
+          { id: uuidv4(), username: 'dom', password: 'dom123', handler: 'Dom', role: 'member' },
+          { id: uuidv4(), username: 'nick', password: 'nick123', handler: 'Nick', role: 'member' }
+        ];
+        saveData(data);
+      }
+      return data;
     }
   } catch (e) {
     console.error('Error loading data, resetting:', e.message);
@@ -57,15 +78,106 @@ function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// --- API Routes ---
+// --- Session Management ---
+// In-memory sessions: { token: { userId, handler, role, createdAt } }
+const sessions = {};
+
+function authenticate(req, res, next) {
+  const token = req.headers['authorization']?.replace('Bearer ', '');
+  if (!token || !sessions[token]) {
+    return res.status(401).json({ error: 'Not authenticated. Please log in.' });
+  }
+  req.user = sessions[token];
+  next();
+}
+
+// --- Auth Routes (no auth required) ---
+
+// Login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  const data = loadData();
+  const user = data.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+  if (!user) return res.status(401).json({ error: 'Invalid username or password' });
+
+  // Find their team member info
+  const teamMember = data.team.find(t => t.handler === user.handler);
+  const token = uuidv4();
+  sessions[token] = {
+    userId: user.id,
+    handler: user.handler,
+    role: user.role,
+    teamId: teamMember?.id || null,
+    createdAt: Date.now()
+  };
+
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      handler: user.handler,
+      role: user.role,
+      teamId: teamMember?.id || null,
+      photoUrl: teamMember?.photoUrl || null
+    }
+  });
+});
+
+// Verify session / get current user
+app.get('/api/me', authenticate, (req, res) => {
+  const data = loadData();
+  const user = data.users.find(u => u.id === req.user.userId);
+  const teamMember = data.team.find(t => t.handler === req.user.handler);
+  if (!user) return res.status(401).json({ error: 'User not found' });
+  res.json({
+    id: user.id,
+    username: user.username,
+    handler: user.handler,
+    role: user.role,
+    teamId: teamMember?.id || null,
+    photoUrl: teamMember?.photoUrl || null
+  });
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+  const token = req.headers['authorization']?.replace('Bearer ', '');
+  if (token) delete sessions[token];
+  res.json({ success: true });
+});
+
+// Change password
+app.put('/api/change-password', authenticate, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
+  if (newPassword.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+
+  const data = loadData();
+  const user = data.users.find(u => u.id === req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect' });
+
+  user.password = newPassword;
+  saveData(data);
+  res.json({ success: true });
+});
+
+// --- Protected API Routes ---
 
 // Get full state
-app.get('/api/state', (req, res) => {
-  res.json(loadData());
+app.get('/api/state', authenticate, (req, res) => {
+  const data = loadData();
+  // Don't send passwords to the client
+  const safeData = { ...data };
+  delete safeData.users;
+  res.json(safeData);
 });
 
 // --- Team ---
-app.put('/api/team/:id/bot-name', (req, res) => {
+app.put('/api/team/:id/bot-name', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.params.id);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
@@ -78,7 +190,7 @@ app.put('/api/team/:id/bot-name', (req, res) => {
 });
 
 // --- Profile Picture Upload ---
-app.put('/api/team/:id/photo', (req, res) => {
+app.put('/api/team/:id/photo', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.params.id);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
@@ -97,7 +209,7 @@ app.put('/api/team/:id/photo', (req, res) => {
 });
 
 // --- Intake Queue ---
-app.post('/api/intake', (req, res) => {
+app.post('/api/intake', authenticate, (req, res) => {
   const data = loadData();
   const item = {
     id: uuidv4(),
@@ -114,14 +226,14 @@ app.post('/api/intake', (req, res) => {
   res.json(item);
 });
 
-app.delete('/api/intake/:id', (req, res) => {
+app.delete('/api/intake/:id', authenticate, (req, res) => {
   const data = loadData();
   data.intakeQueue = data.intakeQueue.filter(i => i.id !== req.params.id);
   saveData(data);
   res.json({ success: true });
 });
 
-app.put('/api/intake/:id', (req, res) => {
+app.put('/api/intake/:id', authenticate, (req, res) => {
   const data = loadData();
   const idx = data.intakeQueue.findIndex(i => i.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Not found' });
@@ -131,7 +243,7 @@ app.put('/api/intake/:id', (req, res) => {
 });
 
 // --- Busy Bots (assign project to bot) ---
-app.post('/api/busy', (req, res) => {
+app.post('/api/busy', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.body.teamId);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
@@ -154,7 +266,7 @@ app.post('/api/busy', (req, res) => {
   res.json(busy);
 });
 
-app.delete('/api/busy/:id', (req, res) => {
+app.delete('/api/busy/:id', authenticate, (req, res) => {
   const data = loadData();
   data.busyBots = data.busyBots.filter(b => b.id !== req.params.id);
   saveData(data);
@@ -162,7 +274,7 @@ app.delete('/api/busy/:id', (req, res) => {
 });
 
 // --- Complete a project (move to Hall of Victory) ---
-app.post('/api/complete/:busyId', (req, res) => {
+app.post('/api/complete/:busyId', authenticate, (req, res) => {
   const data = loadData();
   const busyIdx = data.busyBots.findIndex(b => b.id === req.params.busyId);
   if (busyIdx === -1) return res.status(404).json({ error: 'Busy bot not found' });
@@ -205,7 +317,7 @@ app.post('/api/complete/:busyId', (req, res) => {
 });
 
 // --- Coalesce Recommendations ---
-app.get('/api/coalesce', (req, res) => {
+app.get('/api/coalesce', authenticate, (req, res) => {
   const data = loadData();
   const queue = data.intakeQueue;
   const busy = data.busyBots;
@@ -258,11 +370,11 @@ app.get('/api/coalesce', (req, res) => {
 });
 
 // --- Links ---
-app.get('/api/links', (req, res) => {
+app.get('/api/links', authenticate, (req, res) => {
   res.json(loadData().links);
 });
 
-app.post('/api/links', (req, res) => {
+app.post('/api/links', authenticate, (req, res) => {
   const data = loadData();
   const link = { id: uuidv4(), label: req.body.label, url: req.body.url, category: req.body.category || 'other' };
   data.links.push(link);
@@ -270,7 +382,7 @@ app.post('/api/links', (req, res) => {
   res.json(link);
 });
 
-app.delete('/api/links/:id', (req, res) => {
+app.delete('/api/links/:id', authenticate, (req, res) => {
   const data = loadData();
   data.links = data.links.filter(l => l.id !== req.params.id);
   saveData(data);
@@ -278,11 +390,11 @@ app.delete('/api/links/:id', (req, res) => {
 });
 
 // --- API Keys ---
-app.get('/api/keys', (req, res) => {
+app.get('/api/keys', authenticate, (req, res) => {
   res.json(loadData().apiKeys);
 });
 
-app.post('/api/keys', (req, res) => {
+app.post('/api/keys', authenticate, (req, res) => {
   const data = loadData();
   const key = { id: uuidv4(), label: req.body.label, key: req.body.key, masked: true };
   data.apiKeys.push(key);
@@ -290,7 +402,7 @@ app.post('/api/keys', (req, res) => {
   res.json(key);
 });
 
-app.put('/api/keys/:id', (req, res) => {
+app.put('/api/keys/:id', authenticate, (req, res) => {
   const data = loadData();
   const k = data.apiKeys.find(a => a.id === req.params.id);
   if (!k) return res.status(404).json({ error: 'Not found' });
@@ -300,7 +412,7 @@ app.put('/api/keys/:id', (req, res) => {
   res.json(k);
 });
 
-app.delete('/api/keys/:id', (req, res) => {
+app.delete('/api/keys/:id', authenticate, (req, res) => {
   const data = loadData();
   data.apiKeys = data.apiKeys.filter(k => k.id !== req.params.id);
   saveData(data);

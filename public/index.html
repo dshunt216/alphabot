@@ -199,6 +199,17 @@ tr:last-child td { border-bottom: none; }
 .intake-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .intake-item:last-child { border-bottom: none; }
 
+/* Login screen */
+.login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-deep); }
+.login-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.login-card .brand { text-align: center; margin-bottom: 32px; }
+.login-card .brand .logo-lg { width: 64px; height: 64px; border-radius: 16px; background: var(--gradient-1); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; color: white; margin-bottom: 12px; }
+.login-card .brand h1 { font-size: 24px; font-weight: 700; }
+.login-card .brand p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.login-error { background: rgba(252,92,92,0.1); border: 1px solid rgba(252,92,92,0.3); border-radius: var(--radius-sm); padding: 10px 14px; color: var(--accent-red); font-size: 13px; margin-bottom: 16px; }
+.logout-btn { background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; font-family: inherit; }
+.logout-btn:hover { color: var(--accent-red); background: rgba(252,92,92,0.1); }
+
 @media (max-width: 768px) {
   .sidebar { width: 60px; }
   .sidebar-brand h1, .sidebar-brand span, .nav-item span, .nav-label, .sidebar-footer .info, .nav-badge { display: none; }
@@ -218,12 +229,28 @@ tr:last-child td { border-bottom: none; }
 const { useState, useEffect, useCallback, useRef } = React;
 
 const API = '';
+
+// --- Auth helpers ---
+function getToken() { return localStorage.getItem('alphabot_token'); }
+function setToken(t) { localStorage.setItem('alphabot_token', t); }
+function clearToken() { localStorage.removeItem('alphabot_token'); localStorage.removeItem('alphabot_user'); }
+function getSavedUser() { try { return JSON.parse(localStorage.getItem('alphabot_user')); } catch { return null; } }
+function setSavedUser(u) { localStorage.setItem('alphabot_user', JSON.stringify(u)); }
+
 async function api(path, opts = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined
   });
+  if (res.status === 401) {
+    clearToken();
+    window.location.reload();
+    return {};
+  }
   return res.json();
 }
 
@@ -469,9 +496,65 @@ function LiveTimer({ startedAt }) {
 }
 
 // ===========================================================
+// LOGIN SCREEN
+// ===========================================================
+function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Login failed'); setLoading(false); return; }
+      setToken(data.token);
+      setSavedUser(data.user);
+      onLogin(data.user);
+    } catch (err) {
+      setError('Connection error. Try again.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <div className="brand">
+          <div className="logo-lg">AB</div>
+          <h1>Alphabot</h1>
+          <p>Sign in to your account</p>
+        </div>
+        {error && <div className="login-error">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Username</label>
+            <input className="form-control" placeholder="Enter your username" value={username} onChange={e => setUsername(e.target.value)} autoFocus required />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input className="form-control" type="password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          <button type="submit" className="btn btn-primary w-full" style={{ marginTop: 8, justifyContent: 'center' }} disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================
 // MAIN APP
 // ===========================================================
 function App() {
+  const [currentUser, setCurrentUser] = useState(getSavedUser());
   const [state, setState] = useState(null);
   const [page, setPage] = useState('dashboard');
   const [modal, setModal] = useState(null);
@@ -480,13 +563,37 @@ function App() {
   const fileInputRef = useRef(null);
   const [uploadTarget, setUploadTarget] = useState(null);
 
-  const load = useCallback(async () => { const data = await api('/api/state'); setState(data); }, []);
-  useEffect(() => { load(); }, [load]);
+  // Verify saved session on mount
+  useEffect(() => {
+    const token = getToken();
+    if (token && currentUser) {
+      api('/api/me').then(u => {
+        if (u && u.handler) { setCurrentUser(u); setSavedUser(u); }
+        else { clearToken(); setCurrentUser(null); }
+      }).catch(() => { clearToken(); setCurrentUser(null); });
+    }
+  }, []);
+
+  function handleLogin(user) { setCurrentUser(user); }
+  function handleLogout() {
+    api('/api/logout', { method: 'POST' });
+    clearToken();
+    setCurrentUser(null);
+    setState(null);
+  }
+
+  // If not logged in, show login screen
+  if (!currentUser || !getToken()) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
+  const load = useCallback(async () => { const data = await api('/api/state'); if (data && data.team) setState(data); }, []);
+  useEffect(() => { if (currentUser) load(); }, [currentUser, load]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const loadCoalesce = useCallback(async () => { const recs = await api('/api/coalesce'); setCoalesce(recs); }, []);
-  useEffect(() => { if (state && state.intakeQueue.length > 0) loadCoalesce(); }, [state?.intakeQueue?.length]);
+  useEffect(() => { if (state && state.intakeQueue && state.intakeQueue.length > 0) loadCoalesce(); }, [state?.intakeQueue?.length]);
 
   if (!state) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>
@@ -583,7 +690,7 @@ function App() {
     return (
       <>
         <div className="page-header">
-          <h2>Welcome back, Daniel</h2>
+          <h2>Welcome back, {currentUser.handler}</h2>
           <p>Alphabot command center — your team's bot project hub</p>
         </div>
         <div className="stat-row">
@@ -949,7 +1056,7 @@ function App() {
             <div className="form-group" style={{ flex: 1 }}><label>Category</label><select name="category" className="form-control">{CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
             <div className="form-group" style={{ flex: 1 }}><label>Priority</label><select name="priority" className="form-control"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
           </div>
-          <div className="form-group"><label>Submitted By</label><select name="submittedBy" className="form-control">{team.map(t => <option key={t.id} value={t.handler}>{t.handler}</option>)}</select></div>
+          <div className="form-group"><label>Submitted By</label><select name="submittedBy" className="form-control" defaultValue={currentUser.handler}>{team.map(t => <option key={t.id} value={t.handler}>{t.handler}</option>)}</select></div>
           <button type="submit" className="btn btn-primary w-full mt-2"><Icon name="plus" size={14} /> Submit to Queue</button>
         </form>
       </Modal>
@@ -1007,7 +1114,13 @@ function App() {
             </div>
           ))}
         </nav>
-        <div className="sidebar-footer"><div className="avatar-sm">D</div><div className="info">Daniel<span>Handler</span></div></div>
+        <div className="sidebar-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <div className="flex items-center gap-3">
+            <div className="avatar-sm" style={{ background: AVATAR_COLORS[team.findIndex(t => t.handler === currentUser.handler) % AVATAR_COLORS.length] }}>{currentUser.handler[0]}</div>
+            <div className="info">{currentUser.handler}<span>{currentUser.role === 'admin' ? 'Admin' : 'Handler'}</span></div>
+          </div>
+          <button className="logout-btn" onClick={handleLogout}>Sign Out</button>
+        </div>
       </aside>
 
       <main className="main">
