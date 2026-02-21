@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Data Layer ---
 function getDefaultData() {
@@ -72,6 +73,25 @@ app.put('/api/team/:id/bot-name', (req, res) => {
   // Update references in busyBots and hallOfVictory
   data.busyBots.forEach(b => { if (b.teamId === req.params.id) b.botName = req.body.botName; });
   data.hallOfVictory.forEach(v => { if (v.teamId === req.params.id) v.botName = req.body.botName; });
+  saveData(data);
+  res.json(member);
+});
+
+// --- Profile Picture Upload ---
+app.put('/api/team/:id/photo', (req, res) => {
+  const data = loadData();
+  const member = data.team.find(t => t.id === req.params.id);
+  if (!member) return res.status(404).json({ error: 'Team member not found' });
+  // Expect base64 data URL in req.body.photo
+  if (!req.body.photo) return res.status(400).json({ error: 'No photo provided' });
+  const uploadsDir = path.join(__dirname, 'uploads');
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  const matches = req.body.photo.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,(.+)$/);
+  if (!matches) return res.status(400).json({ error: 'Invalid image format' });
+  const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+  const filename = `${req.params.id}.${ext}`;
+  fs.writeFileSync(path.join(uploadsDir, filename), Buffer.from(matches[2], 'base64'));
+  member.photoUrl = `/uploads/${filename}?t=${Date.now()}`;
   saveData(data);
   res.json(member);
 });
