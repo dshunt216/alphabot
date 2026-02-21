@@ -15,14 +15,18 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Data Layer ---
 function getDefaultData() {
+  // Generate stable team IDs so sample data can reference them
+  const teamIds = [uuidv4(), uuidv4(), uuidv4(), uuidv4(), uuidv4(), uuidv4()];
+  const now = new Date();
+
   return {
     team: [
-      { id: uuidv4(), handler: 'Daniel', botName: "D'Vante", avatar: 'D' },
-      { id: uuidv4(), handler: 'Austin', botName: "D'Angelo", avatar: 'A' },
-      { id: uuidv4(), handler: 'Joe', botName: 'JoeB', avatar: 'J' },
-      { id: uuidv4(), handler: 'Kenny', botName: 'MallCop', avatar: 'K' },
-      { id: uuidv4(), handler: 'Dom', botName: 'Virgil Lablow', avatar: 'D' },
-      { id: uuidv4(), handler: 'Nick', botName: 'Gibson', avatar: 'N' }
+      { id: teamIds[0], handler: 'Daniel', botName: "D'Vante", avatar: 'D' },
+      { id: teamIds[1], handler: 'Austin', botName: "D'Angelo", avatar: 'A' },
+      { id: teamIds[2], handler: 'Joe', botName: 'JoeB', avatar: 'J' },
+      { id: teamIds[3], handler: 'Kenny', botName: 'MallCop', avatar: 'K' },
+      { id: teamIds[4], handler: 'Dom', botName: 'Virgil Lablow', avatar: 'D' },
+      { id: teamIds[5], handler: 'Nick', botName: 'Gibson', avatar: 'N' }
     ],
     users: [
       { id: uuidv4(), username: 'daniel', password: 'daniel123', handler: 'Daniel', role: 'admin' },
@@ -32,9 +36,84 @@ function getDefaultData() {
       { id: uuidv4(), username: 'dom', password: 'dom123', handler: 'Dom', role: 'member' },
       { id: uuidv4(), username: 'nick', password: 'nick123', handler: 'Nick', role: 'member' }
     ],
-    intakeQueue: [],
-    busyBots: [],
-    hallOfVictory: [],
+    // --- SAMPLE DATA (clearly labeled) ---
+    intakeQueue: [
+      {
+        id: uuidv4(), title: '[SAMPLE] Inventory Reorder Alert System',
+        description: 'Automatically detect when warehouse inventory drops below threshold and send reorder alerts to the supplier portal. Needs SMS + email notifications.',
+        category: 'automation', submittedBy: 'Daniel', submittedAt: new Date(now - 2 * 86400000).toISOString(), priority: 'high', status: 'queued'
+      },
+      {
+        id: uuidv4(), title: '[SAMPLE] Supplier Price Comparison Dashboard',
+        description: 'Pull pricing data from our top 5 suppliers and display a comparison dashboard. Track price history over time for inventory items.',
+        category: 'data', submittedBy: 'Austin', submittedAt: new Date(now - 1 * 86400000).toISOString(), priority: 'medium', status: 'queued'
+      },
+      {
+        id: uuidv4(), title: '[SAMPLE] Warehouse Barcode Scanner App',
+        description: 'Mobile-friendly web app that uses the phone camera to scan product barcodes and update inventory counts in real time.',
+        category: 'interface', submittedBy: 'Kenny', submittedAt: new Date(now - 12 * 3600000).toISOString(), priority: 'medium', status: 'queued'
+      },
+      {
+        id: uuidv4(), title: '[SAMPLE] Customer Return Processing Workflow',
+        description: 'Streamlined workflow for handling customer returns — auto-generate RMA numbers, update inventory, trigger refund process.',
+        category: 'workflow', submittedBy: 'Dom', submittedAt: new Date(now - 6 * 3600000).toISOString(), priority: 'low', status: 'queued'
+      }
+    ],
+    busyBots: [
+      {
+        id: uuidv4(), teamId: teamIds[0], handler: 'Daniel', botName: "D'Vante",
+        projectTitle: '[SAMPLE] Shipping Label Automation',
+        projectDescription: 'Auto-generate shipping labels from order data, pull carrier rates from UPS/FedEx APIs, and batch print for warehouse crew.',
+        startedAt: new Date(now - 4 * 3600000).toISOString(), status: 'in-progress'
+      },
+      {
+        id: uuidv4(), teamId: teamIds[1], handler: 'Austin', botName: "D'Angelo",
+        projectTitle: '[SAMPLE] Customer Order Tracking Portal',
+        projectDescription: 'Self-service portal where wholesale customers can check their order status, view invoices, and see estimated delivery times.',
+        startedAt: new Date(now - 18 * 3600000).toISOString(), status: 'in-progress'
+      }
+    ],
+    hallOfVictory: [
+      {
+        id: uuidv4(), teamId: teamIds[2], handler: 'Joe', botName: 'JoeB',
+        projectTitle: '[SAMPLE] Invoice PDF Generator',
+        projectDescription: 'Generates branded PDF invoices from order data with line items, tax calculations, and payment terms.',
+        startedAt: new Date(now - 5 * 86400000).toISOString(),
+        completedAt: new Date(now - 3 * 86400000).toISOString(),
+        elapsedMs: 2 * 86400000, points: 150, awards: ['Same Day Ship'],
+        deliverableUrl: 'https://github.com/example/invoice-generator',
+        completionNotes: '[SAMPLE] Built with Node.js + PDFKit. Pulls order data from the master spreadsheet API.'
+      },
+      {
+        id: uuidv4(), teamId: teamIds[3], handler: 'Kenny', botName: 'MallCop',
+        projectTitle: '[SAMPLE] Product Catalog Sync',
+        projectDescription: 'Syncs product catalog between Shopify storefront and internal inventory database every 15 minutes.',
+        startedAt: new Date(now - 7 * 86400000).toISOString(),
+        completedAt: new Date(now - 5 * 86400000).toISOString(),
+        elapsedMs: 2 * 86400000, points: 150, awards: ['First Blood'],
+        deliverableUrl: 'https://github.com/example/catalog-sync',
+        completionNotes: '[SAMPLE] Cron job runs every 15min. Handles SKU mapping and price updates. Dashboard at /admin/sync-status.'
+      },
+      {
+        id: uuidv4(), teamId: teamIds[5], handler: 'Nick', botName: 'Gibson',
+        projectTitle: '[SAMPLE] Daily Sales Report Email',
+        projectDescription: 'Automated daily email to management with sales totals, top products, and inventory warnings.',
+        startedAt: new Date(now - 4 * 86400000).toISOString(),
+        completedAt: new Date(now - 3.5 * 86400000).toISOString(),
+        elapsedMs: 12 * 3600000, points: 200, awards: ['Same Day Ship'],
+        deliverableUrl: 'https://github.com/example/daily-report',
+        completionNotes: '[SAMPLE] Sends at 7am EST via SendGrid. Pulls from Postgres sales table.'
+      }
+    ],
+    activity: [
+      { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
+      { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
+      { id: uuidv4(), type: 'bot_assigned', handler: 'Daniel', botName: "D'Vante", detail: '[SAMPLE] Shipping Label Automation', timestamp: new Date(now - 4 * 3600000).toISOString() },
+      { id: uuidv4(), type: 'bot_assigned', handler: 'Austin', botName: "D'Angelo", detail: '[SAMPLE] Customer Order Tracking Portal', timestamp: new Date(now - 18 * 3600000).toISOString() },
+      { id: uuidv4(), type: 'project_completed', handler: 'Nick', botName: 'Gibson', detail: '[SAMPLE] Daily Sales Report Email', points: 200, timestamp: new Date(now - 3.5 * 86400000).toISOString() },
+      { id: uuidv4(), type: 'project_completed', handler: 'Kenny', botName: 'MallCop', detail: '[SAMPLE] Product Catalog Sync', points: 150, timestamp: new Date(now - 5 * 86400000).toISOString() },
+      { id: uuidv4(), type: 'project_completed', handler: 'Joe', botName: 'JoeB', detail: '[SAMPLE] Invoice PDF Generator', points: 150, timestamp: new Date(now - 3 * 86400000).toISOString() },
+    ],
     links: [
       { id: uuidv4(), label: 'Team Google Drive', url: 'https://drive.google.com', category: 'drive' },
       { id: uuidv4(), label: 'Master Spreadsheet', url: 'https://docs.google.com/spreadsheets', category: 'spreadsheet' },
@@ -52,7 +131,7 @@ function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-      // Migration: add users array if missing (existing installs)
+      // Migrations for existing installs
       if (!data.users) {
         data.users = [
           { id: uuidv4(), username: 'daniel', password: 'daniel123', handler: 'Daniel', role: 'admin' },
@@ -62,8 +141,9 @@ function loadData() {
           { id: uuidv4(), username: 'dom', password: 'dom123', handler: 'Dom', role: 'member' },
           { id: uuidv4(), username: 'nick', password: 'nick123', handler: 'Nick', role: 'member' }
         ];
-        saveData(data);
       }
+      if (!data.activity) data.activity = [];
+      saveData(data);
       return data;
     }
   } catch (e) {
@@ -78,8 +158,13 @@ function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+function addActivity(data, type, info) {
+  data.activity.unshift({ id: uuidv4(), type, ...info, timestamp: new Date().toISOString() });
+  // Keep last 100 entries
+  if (data.activity.length > 100) data.activity = data.activity.slice(0, 100);
+}
+
 // --- Session Management ---
-// In-memory sessions: { token: { userId, handler, role, createdAt } }
 const sessions = {};
 
 function authenticate(req, res, next) {
@@ -91,86 +176,51 @@ function authenticate(req, res, next) {
   next();
 }
 
-// --- Auth Routes (no auth required) ---
-
-// Login
+// --- Auth Routes ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-
   const data = loadData();
   const user = data.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
   if (!user) return res.status(401).json({ error: 'Invalid username or password' });
-
-  // Find their team member info
   const teamMember = data.team.find(t => t.handler === user.handler);
   const token = uuidv4();
-  sessions[token] = {
-    userId: user.id,
-    handler: user.handler,
-    role: user.role,
-    teamId: teamMember?.id || null,
-    createdAt: Date.now()
-  };
-
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      handler: user.handler,
-      role: user.role,
-      teamId: teamMember?.id || null,
-      photoUrl: teamMember?.photoUrl || null
-    }
-  });
+  sessions[token] = { userId: user.id, handler: user.handler, role: user.role, teamId: teamMember?.id || null, createdAt: Date.now() };
+  res.json({ token, user: { id: user.id, username: user.username, handler: user.handler, role: user.role, teamId: teamMember?.id || null, photoUrl: teamMember?.photoUrl || null } });
 });
 
-// Verify session / get current user
 app.get('/api/me', authenticate, (req, res) => {
   const data = loadData();
   const user = data.users.find(u => u.id === req.user.userId);
   const teamMember = data.team.find(t => t.handler === req.user.handler);
   if (!user) return res.status(401).json({ error: 'User not found' });
-  res.json({
-    id: user.id,
-    username: user.username,
-    handler: user.handler,
-    role: user.role,
-    teamId: teamMember?.id || null,
-    photoUrl: teamMember?.photoUrl || null
-  });
+  res.json({ id: user.id, username: user.username, handler: user.handler, role: user.role, teamId: teamMember?.id || null, photoUrl: teamMember?.photoUrl || null });
 });
 
-// Logout
 app.post('/api/logout', (req, res) => {
   const token = req.headers['authorization']?.replace('Bearer ', '');
   if (token) delete sessions[token];
   res.json({ success: true });
 });
 
-// Change password
 app.put('/api/change-password', authenticate, (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
   if (newPassword.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
-
   const data = loadData();
   const user = data.users.find(u => u.id === req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect' });
-
   user.password = newPassword;
   saveData(data);
   res.json({ success: true });
 });
 
-// --- Protected API Routes ---
+// --- Protected Routes ---
 
-// Get full state
+// Get full state (includes activity now)
 app.get('/api/state', authenticate, (req, res) => {
   const data = loadData();
-  // Don't send passwords to the client
   const safeData = { ...data };
   delete safeData.users;
   res.json(safeData);
@@ -181,20 +231,19 @@ app.put('/api/team/:id/bot-name', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.params.id);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
+  const oldName = member.botName;
   member.botName = req.body.botName;
-  // Update references in busyBots and hallOfVictory
   data.busyBots.forEach(b => { if (b.teamId === req.params.id) b.botName = req.body.botName; });
   data.hallOfVictory.forEach(v => { if (v.teamId === req.params.id) v.botName = req.body.botName; });
+  addActivity(data, 'bot_renamed', { handler: member.handler, detail: `${oldName} → ${req.body.botName}` });
   saveData(data);
   res.json(member);
 });
 
-// --- Profile Picture Upload ---
 app.put('/api/team/:id/photo', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.params.id);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
-  // Expect base64 data URL in req.body.photo
   if (!req.body.photo) return res.status(400).json({ error: 'No photo provided' });
   const uploadsDir = path.join(__dirname, 'uploads');
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -216,18 +265,21 @@ app.post('/api/intake', authenticate, (req, res) => {
     title: req.body.title,
     description: req.body.description,
     category: req.body.category || 'general',
-    submittedBy: req.body.submittedBy,
+    submittedBy: req.body.submittedBy || req.user.handler,
     submittedAt: new Date().toISOString(),
     priority: req.body.priority || 'medium',
     status: 'queued'
   };
   data.intakeQueue.push(item);
+  addActivity(data, 'project_submitted', { handler: req.user.handler, detail: item.title });
   saveData(data);
   res.json(item);
 });
 
 app.delete('/api/intake/:id', authenticate, (req, res) => {
   const data = loadData();
+  const item = data.intakeQueue.find(i => i.id === req.params.id);
+  if (item) addActivity(data, 'project_removed', { handler: req.user.handler, detail: item.title });
   data.intakeQueue = data.intakeQueue.filter(i => i.id !== req.params.id);
   saveData(data);
   res.json({ success: true });
@@ -242,54 +294,48 @@ app.put('/api/intake/:id', authenticate, (req, res) => {
   res.json(data.intakeQueue[idx]);
 });
 
-// --- Busy Bots (assign project to bot) ---
+// --- Busy Bots ---
 app.post('/api/busy', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.body.teamId);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
-  // Remove from intake if provided
   if (req.body.intakeId) {
     data.intakeQueue = data.intakeQueue.filter(i => i.id !== req.body.intakeId);
   }
   const busy = {
-    id: uuidv4(),
-    teamId: member.id,
-    handler: member.handler,
-    botName: member.botName,
-    projectTitle: req.body.projectTitle,
-    projectDescription: req.body.projectDescription || '',
-    startedAt: new Date().toISOString(),
-    status: 'in-progress'
+    id: uuidv4(), teamId: member.id, handler: member.handler, botName: member.botName,
+    projectTitle: req.body.projectTitle, projectDescription: req.body.projectDescription || '',
+    startedAt: new Date().toISOString(), status: 'in-progress'
   };
   data.busyBots.push(busy);
+  addActivity(data, 'bot_assigned', { handler: member.handler, botName: member.botName, detail: busy.projectTitle });
   saveData(data);
   res.json(busy);
 });
 
 app.delete('/api/busy/:id', authenticate, (req, res) => {
   const data = loadData();
+  const bot = data.busyBots.find(b => b.id === req.params.id);
+  if (bot) addActivity(data, 'bot_unassigned', { handler: bot.handler, botName: bot.botName, detail: bot.projectTitle });
   data.busyBots = data.busyBots.filter(b => b.id !== req.params.id);
   saveData(data);
   res.json({ success: true });
 });
 
-// --- Complete a project (move to Hall of Victory) ---
+// --- Complete a project ---
 app.post('/api/complete/:busyId', authenticate, (req, res) => {
   const data = loadData();
   const busyIdx = data.busyBots.findIndex(b => b.id === req.params.busyId);
   if (busyIdx === -1) return res.status(404).json({ error: 'Busy bot not found' });
   const busy = data.busyBots[busyIdx];
-  const startTime = new Date(busy.startedAt).getTime();
-  const elapsed = Date.now() - startTime;
+  const elapsed = Date.now() - new Date(busy.startedAt).getTime();
   const hours = Math.floor(elapsed / 3600000);
 
-  // Points system: base 100 + speed bonus
   let points = 100;
-  if (hours < 1) points += 200;       // Lightning fast
-  else if (hours < 24) points += 100;  // Same day
-  else if (hours < 72) points += 50;   // Within 3 days
+  if (hours < 1) points += 200;
+  else if (hours < 24) points += 100;
+  else if (hours < 72) points += 50;
 
-  // Awards
   const awards = [];
   if (hours < 1) awards.push('Lightning');
   if (hours < 24) awards.push('Same Day Ship');
@@ -298,38 +344,32 @@ app.post('/api/complete/:busyId', authenticate, (req, res) => {
   if (data.hallOfVictory.filter(v => v.teamId === busy.teamId).length >= 9) awards.push('Legend');
 
   const victory = {
-    id: uuidv4(),
-    teamId: busy.teamId,
-    handler: busy.handler,
-    botName: busy.botName,
-    projectTitle: busy.projectTitle,
-    projectDescription: busy.projectDescription,
-    startedAt: busy.startedAt,
-    completedAt: new Date().toISOString(),
-    elapsedMs: elapsed,
-    points,
-    awards
+    id: uuidv4(), teamId: busy.teamId, handler: busy.handler, botName: busy.botName,
+    projectTitle: busy.projectTitle, projectDescription: busy.projectDescription,
+    startedAt: busy.startedAt, completedAt: new Date().toISOString(),
+    elapsedMs: elapsed, points, awards,
+    deliverableUrl: req.body.deliverableUrl || '',
+    completionNotes: req.body.completionNotes || ''
   };
   data.hallOfVictory.push(victory);
   data.busyBots.splice(busyIdx, 1);
+  addActivity(data, 'project_completed', { handler: busy.handler, botName: busy.botName, detail: busy.projectTitle, points });
   saveData(data);
   res.json(victory);
 });
 
-// --- Coalesce Recommendations ---
+// --- Coalesce ---
 app.get('/api/coalesce', authenticate, (req, res) => {
   const data = loadData();
   const queue = data.intakeQueue;
   const busy = data.busyBots;
   const recommendations = [];
 
-  // Keyword extraction helper
   function getKeywords(text) {
-    const stop = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','is','it','that','this','as','be','are','was','were','been','has','have','had','do','does','did','will','would','could','should','can','may','i','we','they','he','she','my','our','their','his','her','its','not','no','so','if','up','out','all','just','also','want','need','create','build','make','app','interface','system','tool','new','get','use']);
+    const stop = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','is','it','that','this','as','be','are','was','were','been','has','have','had','do','does','did','will','would','could','should','can','may','i','we','they','he','she','my','our','their','his','her','its','not','no','so','if','up','out','all','just','also','want','need','create','build','make','app','interface','system','tool','new','get','use','sample']);
     return (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stop.has(w));
   }
 
-  // Compare intake items to each other
   for (let i = 0; i < queue.length; i++) {
     for (let j = i + 1; j < queue.length; j++) {
       const kw1 = getKeywords(queue[i].title + ' ' + queue[i].description);
@@ -337,16 +377,13 @@ app.get('/api/coalesce', authenticate, (req, res) => {
       const overlap = kw1.filter(w => kw2.includes(w));
       if (overlap.length >= 2) {
         recommendations.push({
-          type: 'merge_queue',
-          items: [queue[i], queue[j]],
+          type: 'merge_queue', items: [queue[i], queue[j]],
           reason: `Both projects involve: ${[...new Set(overlap)].join(', ')}. Consider combining into one project.`,
           confidence: Math.min(overlap.length / Math.max(kw1.length, kw2.length, 1), 1)
         });
       }
     }
   }
-
-  // Compare intake items to active projects
   for (const item of queue) {
     for (const b of busy) {
       const kw1 = getKeywords(item.title + ' ' + item.description);
@@ -354,34 +391,27 @@ app.get('/api/coalesce', authenticate, (req, res) => {
       const overlap = kw1.filter(w => kw2.includes(w));
       if (overlap.length >= 2) {
         recommendations.push({
-          type: 'add_to_existing',
-          intakeItem: item,
-          existingProject: b,
+          type: 'add_to_existing', intakeItem: item, existingProject: b,
           reason: `This intake request shares themes with "${b.projectTitle}" (already in progress by ${b.botName}): ${[...new Set(overlap)].join(', ')}. Consider adding as a feature.`,
           confidence: Math.min(overlap.length / Math.max(kw1.length, kw2.length, 1), 1)
         });
       }
     }
   }
-
-  // Sort by confidence
   recommendations.sort((a, b) => b.confidence - a.confidence);
   res.json(recommendations);
 });
 
 // --- Links ---
-app.get('/api/links', authenticate, (req, res) => {
-  res.json(loadData().links);
-});
-
+app.get('/api/links', authenticate, (req, res) => { res.json(loadData().links); });
 app.post('/api/links', authenticate, (req, res) => {
   const data = loadData();
   const link = { id: uuidv4(), label: req.body.label, url: req.body.url, category: req.body.category || 'other' };
   data.links.push(link);
+  addActivity(data, 'link_added', { handler: req.user.handler, detail: link.label });
   saveData(data);
   res.json(link);
 });
-
 app.delete('/api/links/:id', authenticate, (req, res) => {
   const data = loadData();
   data.links = data.links.filter(l => l.id !== req.params.id);
@@ -390,10 +420,7 @@ app.delete('/api/links/:id', authenticate, (req, res) => {
 });
 
 // --- API Keys ---
-app.get('/api/keys', authenticate, (req, res) => {
-  res.json(loadData().apiKeys);
-});
-
+app.get('/api/keys', authenticate, (req, res) => { res.json(loadData().apiKeys); });
 app.post('/api/keys', authenticate, (req, res) => {
   const data = loadData();
   const key = { id: uuidv4(), label: req.body.label, key: req.body.key, masked: true };
@@ -401,7 +428,6 @@ app.post('/api/keys', authenticate, (req, res) => {
   saveData(data);
   res.json(key);
 });
-
 app.put('/api/keys/:id', authenticate, (req, res) => {
   const data = loadData();
   const k = data.apiKeys.find(a => a.id === req.params.id);
@@ -411,12 +437,44 @@ app.put('/api/keys/:id', authenticate, (req, res) => {
   saveData(data);
   res.json(k);
 });
-
 app.delete('/api/keys/:id', authenticate, (req, res) => {
   const data = loadData();
   data.apiKeys = data.apiKeys.filter(k => k.id !== req.params.id);
   saveData(data);
   res.json({ success: true });
+});
+
+// --- Search ---
+app.get('/api/search', authenticate, (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (!q) return res.json({ results: [] });
+  const data = loadData();
+  const results = [];
+  // Search intake queue
+  data.intakeQueue.forEach(item => {
+    if ((item.title + ' ' + item.description + ' ' + item.submittedBy).toLowerCase().includes(q)) {
+      results.push({ type: 'intake', id: item.id, title: item.title, subtitle: `Queued by ${item.submittedBy}`, page: 'dashboard' });
+    }
+  });
+  // Search busy bots
+  data.busyBots.forEach(b => {
+    if ((b.projectTitle + ' ' + b.projectDescription + ' ' + b.handler + ' ' + b.botName).toLowerCase().includes(q)) {
+      results.push({ type: 'busy', id: b.id, title: b.projectTitle, subtitle: `${b.botName} (${b.handler}) — In Progress`, page: 'busy' });
+    }
+  });
+  // Search hall of victory
+  data.hallOfVictory.forEach(v => {
+    if ((v.projectTitle + ' ' + (v.projectDescription || '') + ' ' + v.handler + ' ' + v.botName + ' ' + (v.completionNotes || '')).toLowerCase().includes(q)) {
+      results.push({ type: 'victory', id: v.id, title: v.projectTitle, subtitle: `Completed by ${v.botName} (${v.handler})`, page: 'victory' });
+    }
+  });
+  // Search team
+  data.team.forEach(t => {
+    if ((t.handler + ' ' + t.botName).toLowerCase().includes(q)) {
+      results.push({ type: 'team', id: t.id, title: t.handler, subtitle: `Bot: ${t.botName}`, page: 'team' });
+    }
+  });
+  res.json({ results: results.slice(0, 15) });
 });
 
 // SPA fallback
