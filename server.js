@@ -41,22 +41,26 @@ function getDefaultData() {
       {
         id: uuidv4(), title: '[SAMPLE] Inventory Reorder Alert System',
         description: 'Automatically detect when warehouse inventory drops below threshold and send reorder alerts to the supplier portal. Needs SMS + email notifications.',
-        category: 'automation', submittedBy: 'Daniel', submittedAt: new Date(now - 2 * 86400000).toISOString(), priority: 'high', status: 'queued'
+        category: 'automation', submittedBy: 'Daniel', submittedAt: new Date(now - 2 * 86400000).toISOString(), priority: 'high', status: 'queued',
+        dueDate: new Date(now + 3 * 86400000).toISOString().split('T')[0]
       },
       {
         id: uuidv4(), title: '[SAMPLE] Supplier Price Comparison Dashboard',
         description: 'Pull pricing data from our top 5 suppliers and display a comparison dashboard. Track price history over time for inventory items.',
-        category: 'data', submittedBy: 'Austin', submittedAt: new Date(now - 1 * 86400000).toISOString(), priority: 'medium', status: 'queued'
+        category: 'data', submittedBy: 'Austin', submittedAt: new Date(now - 1 * 86400000).toISOString(), priority: 'medium', status: 'queued',
+        dueDate: new Date(now + 7 * 86400000).toISOString().split('T')[0]
       },
       {
         id: uuidv4(), title: '[SAMPLE] Warehouse Barcode Scanner App',
         description: 'Mobile-friendly web app that uses the phone camera to scan product barcodes and update inventory counts in real time.',
-        category: 'interface', submittedBy: 'Kenny', submittedAt: new Date(now - 12 * 3600000).toISOString(), priority: 'medium', status: 'queued'
+        category: 'interface', submittedBy: 'Kenny', submittedAt: new Date(now - 12 * 3600000).toISOString(), priority: 'medium', status: 'queued',
+        dueDate: new Date(now + 14 * 86400000).toISOString().split('T')[0]
       },
       {
         id: uuidv4(), title: '[SAMPLE] Customer Return Processing Workflow',
         description: 'Streamlined workflow for handling customer returns — auto-generate RMA numbers, update inventory, trigger refund process.',
-        category: 'workflow', submittedBy: 'Dom', submittedAt: new Date(now - 6 * 3600000).toISOString(), priority: 'low', status: 'queued'
+        category: 'workflow', submittedBy: 'Dom', submittedAt: new Date(now - 6 * 3600000).toISOString(), priority: 'low', status: 'queued',
+        dueDate: ''
       }
     ],
     busyBots: [
@@ -64,13 +68,15 @@ function getDefaultData() {
         id: uuidv4(), teamId: teamIds[0], handler: 'Daniel', botName: "D'Vante",
         projectTitle: '[SAMPLE] Shipping Label Automation',
         projectDescription: 'Auto-generate shipping labels from order data, pull carrier rates from UPS/FedEx APIs, and batch print for warehouse crew.',
-        startedAt: new Date(now - 4 * 3600000).toISOString(), status: 'in-progress'
+        startedAt: new Date(now - 4 * 3600000).toISOString(), status: 'in-progress',
+        dueDate: new Date(now + 2 * 86400000).toISOString().split('T')[0]
       },
       {
         id: uuidv4(), teamId: teamIds[1], handler: 'Austin', botName: "D'Angelo",
         projectTitle: '[SAMPLE] Customer Order Tracking Portal',
         projectDescription: 'Self-service portal where wholesale customers can check their order status, view invoices, and see estimated delivery times.',
-        startedAt: new Date(now - 18 * 3600000).toISOString(), status: 'in-progress'
+        startedAt: new Date(now - 18 * 3600000).toISOString(), status: 'in-progress',
+        dueDate: new Date(now + 5 * 86400000).toISOString().split('T')[0]
       }
     ],
     hallOfVictory: [
@@ -105,6 +111,7 @@ function getDefaultData() {
         completionNotes: '[SAMPLE] Sends at 7am EST via SendGrid. Pulls from Postgres sales table.'
       }
     ],
+    comments: {},
     activity: [
       { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
       { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
@@ -143,6 +150,7 @@ function loadData() {
         ];
       }
       if (!data.activity) data.activity = [];
+      if (!data.comments) data.comments = {};
       saveData(data);
       return data;
     }
@@ -268,7 +276,8 @@ app.post('/api/intake', authenticate, (req, res) => {
     submittedBy: req.body.submittedBy || req.user.handler,
     submittedAt: new Date().toISOString(),
     priority: req.body.priority || 'medium',
-    status: 'queued'
+    status: 'queued',
+    dueDate: req.body.dueDate || ''
   };
   data.intakeQueue.push(item);
   addActivity(data, 'project_submitted', { handler: req.user.handler, detail: item.title });
@@ -299,13 +308,16 @@ app.post('/api/busy', authenticate, (req, res) => {
   const data = loadData();
   const member = data.team.find(t => t.id === req.body.teamId);
   if (!member) return res.status(404).json({ error: 'Team member not found' });
+  let intakeItem = null;
   if (req.body.intakeId) {
+    intakeItem = data.intakeQueue.find(i => i.id === req.body.intakeId);
     data.intakeQueue = data.intakeQueue.filter(i => i.id !== req.body.intakeId);
   }
   const busy = {
     id: uuidv4(), teamId: member.id, handler: member.handler, botName: member.botName,
     projectTitle: req.body.projectTitle, projectDescription: req.body.projectDescription || '',
-    startedAt: new Date().toISOString(), status: 'in-progress'
+    startedAt: new Date().toISOString(), status: 'in-progress',
+    dueDate: req.body.dueDate || intakeItem?.dueDate || ''
   };
   data.busyBots.push(busy);
   addActivity(data, 'bot_assigned', { handler: member.handler, botName: member.botName, detail: busy.projectTitle });
@@ -442,6 +454,42 @@ app.delete('/api/keys/:id', authenticate, (req, res) => {
   data.apiKeys = data.apiKeys.filter(k => k.id !== req.params.id);
   saveData(data);
   res.json({ success: true });
+});
+
+// --- Comments ---
+app.get('/api/comments/:projectId', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.comments[req.params.projectId] || []);
+});
+
+app.post('/api/comments/:projectId', authenticate, (req, res) => {
+  const data = loadData();
+  if (!data.comments[req.params.projectId]) data.comments[req.params.projectId] = [];
+  const comment = {
+    id: uuidv4(),
+    author: req.user.handler,
+    text: req.body.text,
+    createdAt: new Date().toISOString()
+  };
+  data.comments[req.params.projectId].push(comment);
+  saveData(data);
+  res.json(comment);
+});
+
+// --- Project Detail (lookup across all collections) ---
+app.get('/api/project/:id', authenticate, (req, res) => {
+  const data = loadData();
+  const id = req.params.id;
+  // Check intake
+  let project = data.intakeQueue.find(i => i.id === id);
+  if (project) return res.json({ ...project, _type: 'intake', _comments: data.comments[id] || [] });
+  // Check busy
+  project = data.busyBots.find(b => b.id === id);
+  if (project) return res.json({ ...project, _type: 'busy', _comments: data.comments[id] || [] });
+  // Check victory
+  project = data.hallOfVictory.find(v => v.id === id);
+  if (project) return res.json({ ...project, _type: 'victory', _comments: data.comments[id] || [] });
+  return res.status(404).json({ error: 'Project not found' });
 });
 
 // --- Search ---
