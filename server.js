@@ -112,6 +112,8 @@ function getDefaultData() {
       }
     ],
     comments: {},
+    notifications: {},
+    botStatus: {},
     activity: [
       { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
       { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
@@ -151,6 +153,8 @@ function loadData() {
       }
       if (!data.activity) data.activity = [];
       if (!data.comments) data.comments = {};
+      if (!data.notifications) data.notifications = {};
+      if (!data.botStatus) data.botStatus = {};
       saveData(data);
       return data;
     }
@@ -170,6 +174,16 @@ function addActivity(data, type, info) {
   data.activity.unshift({ id: uuidv4(), type, ...info, timestamp: new Date().toISOString() });
   // Keep last 100 entries
   if (data.activity.length > 100) data.activity = data.activity.slice(0, 100);
+}
+
+function addNotification(data, handler, message, icon, link) {
+  if (!data.notifications[handler]) data.notifications[handler] = [];
+  data.notifications[handler].unshift({
+    id: uuidv4(), message, icon: icon || 'zap', read: false,
+    createdAt: new Date().toISOString(), link: link || null
+  });
+  // Keep last 50 per user
+  if (data.notifications[handler].length > 50) data.notifications[handler] = data.notifications[handler].slice(0, 50);
 }
 
 // --- Session Management ---
@@ -281,6 +295,12 @@ app.post('/api/intake', authenticate, (req, res) => {
   };
   data.intakeQueue.push(item);
   addActivity(data, 'project_submitted', { handler: req.user.handler, detail: item.title });
+  // Notify all team members about new project
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler) {
+      addNotification(data, t.handler, `${req.user.handler} submitted "${item.title}" to the queue`, 'inbox', 'dashboard');
+    }
+  });
   saveData(data);
   res.json(item);
 });
@@ -321,6 +341,16 @@ app.post('/api/busy', authenticate, (req, res) => {
   };
   data.busyBots.push(busy);
   addActivity(data, 'bot_assigned', { handler: member.handler, botName: member.botName, detail: busy.projectTitle });
+  // Notify the assigned handler
+  if (member.handler !== req.user.handler) {
+    addNotification(data, member.handler, `${req.user.handler} assigned "${busy.projectTitle}" to ${member.botName}`, 'bot', 'busy');
+  }
+  // Notify everyone else
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler && t.handler !== member.handler) {
+      addNotification(data, t.handler, `${member.botName} is now working on "${busy.projectTitle}"`, 'bot', 'busy');
+    }
+  });
   saveData(data);
   res.json(busy);
 });
@@ -366,6 +396,12 @@ app.post('/api/complete/:busyId', authenticate, (req, res) => {
   data.hallOfVictory.push(victory);
   data.busyBots.splice(busyIdx, 1);
   addActivity(data, 'project_completed', { handler: busy.handler, botName: busy.botName, detail: busy.projectTitle, points });
+  // Notify all team members about completion
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler) {
+      addNotification(data, t.handler, `${busy.botName} completed "${busy.projectTitle}" (+${points} pts)!`, 'trophy', 'victory');
+    }
+  });
   saveData(data);
   res.json(victory);
 });
@@ -472,6 +508,15 @@ app.post('/api/comments/:projectId', authenticate, (req, res) => {
     createdAt: new Date().toISOString()
   };
   data.comments[req.params.projectId].push(comment);
+  // Notify project owner about the comment
+  const pid = req.params.projectId;
+  const proj = data.intakeQueue.find(i => i.id === pid) || data.busyBots.find(b => b.id === pid) || data.hallOfVictory.find(v => v.id === pid);
+  if (proj) {
+    const projHandler = proj.handler || proj.submittedBy;
+    if (projHandler && projHandler !== req.user.handler) {
+      addNotification(data, projHandler, `${req.user.handler} commented on "${proj.title || proj.projectTitle}"`, 'message', null);
+    }
+  }
   saveData(data);
   res.json(comment);
 });
@@ -490,6 +535,43 @@ app.get('/api/project/:id', authenticate, (req, res) => {
   project = data.hallOfVictory.find(v => v.id === id);
   if (project) return res.json({ ...project, _type: 'victory', _comments: data.comments[id] || [] });
   return res.status(404).json({ error: 'Project not found' });
+});
+
+// --- Notifications ---
+app.get('/api/notifications', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.notifications[req.user.handler] || []);
+});
+
+app.post('/api/notifications/read', authenticate, (req, res) => {
+  const data = loadData();
+  const notifs = data.notifications[req.user.handler] || [];
+  if (req.body.id) {
+    const n = notifs.find(n => n.id === req.body.id);
+    if (n) n.read = true;
+  } else {
+    notifs.forEach(n => n.read = true);
+  }
+  saveData(data);
+  res.json({ success: true });
+});
+
+// --- Bot Status ---
+app.get('/api/bot-status', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.botStatus || {});
+});
+
+app.put('/api/bot-status/:teamId', authenticate, (req, res) => {
+  const data = loadData();
+  const member = data.team.find(t => t.id === req.params.teamId);
+  if (!member) return res.status(404).json({ error: 'Team member not found' });
+  data.botStatus[req.params.teamId] = {
+    status: req.body.status || 'online',
+    updatedAt: new Date().toISOString()
+  };
+  saveData(data);
+  res.json(data.botStatus[req.params.teamId]);
 });
 
 // --- Search ---
