@@ -116,6 +116,8 @@ function getDefaultData() {
     botStatus: {},
     attachments: {},
     templates: [],
+    mdFiles: [],
+    prompts: [],
     activity: [
       { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
       { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
@@ -159,6 +161,8 @@ function loadData() {
       if (!data.botStatus) data.botStatus = {};
       if (!data.attachments) data.attachments = {};
       if (!data.templates) data.templates = [];
+      if (!data.mdFiles) data.mdFiles = [];
+      if (!data.prompts) data.prompts = [];
       saveData(data);
       return data;
     }
@@ -663,6 +667,113 @@ app.post('/api/templates/:id/use', authenticate, (req, res) => {
   });
   saveData(data);
   res.json(item);
+});
+
+// --- MD Files Repository ---
+app.get('/api/md-files', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.mdFiles || []);
+});
+
+app.post('/api/md-files', authenticate, (req, res) => {
+  const data = loadData();
+  if (!data.mdFiles) data.mdFiles = [];
+  const mdFile = {
+    id: uuidv4(),
+    name: req.body.name,
+    content: req.body.content || '',
+    description: req.body.description || '',
+    uploadedBy: req.user.handler,
+    uploadedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  data.mdFiles.push(mdFile);
+  addActivity(data, 'md_file_added', { handler: req.user.handler, detail: mdFile.name });
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler) {
+      addNotification(data, t.handler, `${req.user.handler} shared "${mdFile.name}" in the MD repository`, 'file', 'links');
+    }
+  });
+  saveData(data);
+  res.json(mdFile);
+});
+
+app.put('/api/md-files/:id', authenticate, (req, res) => {
+  const data = loadData();
+  const file = (data.mdFiles || []).find(f => f.id === req.params.id);
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  if (req.body.name) file.name = req.body.name;
+  if (req.body.content !== undefined) file.content = req.body.content;
+  if (req.body.description !== undefined) file.description = req.body.description;
+  file.updatedAt = new Date().toISOString();
+  saveData(data);
+  res.json(file);
+});
+
+app.delete('/api/md-files/:id', authenticate, (req, res) => {
+  const data = loadData();
+  data.mdFiles = (data.mdFiles || []).filter(f => f.id !== req.params.id);
+  saveData(data);
+  res.json({ success: true });
+});
+
+// Download .md file
+app.get('/api/md-files/:id/download', (req, res) => {
+  const token = req.headers['authorization']?.replace('Bearer ', '') || req.query.token;
+  if (!token || !sessions[token]) return res.status(401).json({ error: 'Not authenticated' });
+  const data = loadData();
+  const file = (data.mdFiles || []).find(f => f.id === req.params.id);
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  const filename = file.name.endsWith('.md') ? file.name : file.name + '.md';
+  res.setHeader('Content-Type', 'text/markdown');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(file.content);
+});
+
+// --- Prompt Paste Board ---
+app.get('/api/prompts', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.prompts || []);
+});
+
+app.post('/api/prompts', authenticate, (req, res) => {
+  const data = loadData();
+  if (!data.prompts) data.prompts = [];
+  const prompt = {
+    id: uuidv4(),
+    title: req.body.title,
+    content: req.body.content,
+    category: req.body.category || 'general',
+    createdBy: req.user.handler,
+    createdAt: new Date().toISOString()
+  };
+  data.prompts.push(prompt);
+  addActivity(data, 'prompt_added', { handler: req.user.handler, detail: prompt.title });
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler) {
+      addNotification(data, t.handler, `${req.user.handler} shared a prompt: "${prompt.title}"`, 'message', 'links');
+    }
+  });
+  saveData(data);
+  res.json(prompt);
+});
+
+app.put('/api/prompts/:id', authenticate, (req, res) => {
+  const data = loadData();
+  const prompt = (data.prompts || []).find(p => p.id === req.params.id);
+  if (!prompt) return res.status(404).json({ error: 'Prompt not found' });
+  if (req.body.title) prompt.title = req.body.title;
+  if (req.body.content !== undefined) prompt.content = req.body.content;
+  if (req.body.category) prompt.category = req.body.category;
+  saveData(data);
+  res.json(prompt);
+});
+
+app.delete('/api/prompts/:id', authenticate, (req, res) => {
+  const data = loadData();
+  data.prompts = (data.prompts || []).filter(p => p.id !== req.params.id);
+  saveData(data);
+  res.json({ success: true });
 });
 
 // --- CSV Export (supports token as query param for direct download) ---
