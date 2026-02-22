@@ -1,0 +1,97 @@
+{
+  "team": [
+    {
+      "id": "4c8281cf-f895-4b59-897c-7e1d05771d9a",
+      "handler": "Daniel",
+      "botName": "D'Vante",
+      "avatar": "D"
+    },
+    {
+      "id": "bd0ada4e-77f3-4351-ac0a-4c8b1772fb26",
+      "handler": "Austin",
+      "botName": "D'Angelo",
+      "avatar": "A"
+    },
+    {
+      "id": "3607dede-b63f-47d0-ade4-469681267d14",
+      "handler": "Joe",
+      "botName": "JoeB",
+      "avatar": "J"
+    },
+    {
+      "id": "9e554f71-aa7f-420a-b125-eb1c01ec7e3e",
+      "handler": "Kenny",
+      "botName": "MallCop",
+      "avatar": "K"
+    },
+    {
+      "id": "7a35477c-7193-4859-90ab-1ec9e163ec20",
+      "handler": "Dom",
+      "botName": "Virgil Lablow",
+      "avatar": "D"
+    },
+    {
+      "id": "fdaf4182-764c-4525-bcd5-c90efb381d4e",
+      "handler": "Nick",
+      "botName": "Gibson",
+      "avatar": "N"
+    }
+  ],
+  "users": [
+    {
+      "id": "373f2a73-6a52-4dcc-b1cc-a0ccc39d38bc",
+      "username": "daniel",
+      "password": "daniel123",
+      "handler": "Daniel",
+      "role": "admin"
+    },
+    {
+      "id": "42c82ec0-cbcb-44af-8688-355631b16351",
+      "username": "austin",
+      "password": "austin123",
+      "handler": "Austin",
+      "role": "member"
+    },
+    {
+      "id": "dc81a636-0080-4cea-b72a-6ddba0ad5ed0",
+      "username": "joe",
+      "password": "joe123",
+      "handler": "Joe",
+      "role": "member"
+    },
+    {
+      "id": "ad63d59b-0514-45ca-9992-bfe72ec58e66",
+      "username": "kenny",
+      "password": "kenny123",
+      "handler": "Kenny",
+      "role": "member"
+    },
+    {
+      "id": "eca98a10-e79b-4f69-b05b-81017b06903e",
+      "username": "dom",
+      "password": "dom123",
+      "handler": "Dom",
+      "role": "member"
+    },
+    {
+      "id": "5333a4c1-53a8-4336-a9c8-d3d75614f5cc",
+      "username": "nick",
+      "password": "nick123",
+      "handler": "Nick",
+      "role": "member"
+    }
+  ],
+  "intakeQueue": [],
+  "busyBots": [],
+  "hallOfVictory": [],
+  "comments": {},
+  "notifications": {},
+  "botStatus": {},
+  "attachments": {},
+  "templates": [],
+  "mdFiles": [],
+  "prompts": [],
+  "activity": [],
+  "links": [],
+  "apiKeys": []
+}
