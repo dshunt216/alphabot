@@ -1130,7 +1130,7 @@ function App() {
             {[...hallOfVictory].reverse().filter(v => victoryFilter === 'all' || v.handler === victoryFilter).map((v, i) => {
               const ti = team.findIndex(t => t.id === v.teamId);
               return (
-                <div key={v.id} className="victory-row" style={{ cursor: 'pointer' }} onClick={() => openProjectDetail(v.id)}
+                <div key={v.id} className="victory-row" style={{ cursor: 'pointer' }} onClick={() => openProjectDetail(v.id)}>
                   <div className="victory-rank" style={{ background: i === 0 ? 'rgba(255,215,0,0.15)' : 'var(--bg-input)', color: i === 0 ? '#ffd700' : 'var(--text-muted)' }}>#{hallOfVictory.length - i}</div>
                   <BotIcon handler={v.handler} size={36} />
                   <div style={{ flex: 1 }}>
