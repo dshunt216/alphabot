@@ -615,6 +615,19 @@ function App() {
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
   const [uploadTarget, setUploadTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchTimeout = useRef(null);
+  const [detailProject, setDetailProject] = useState(null);
+  const [detailComments, setDetailComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [intakeFilter, setIntakeFilter] = useState('all');
+  const [intakeSort, setIntakeSort] = useState('newest');
+  const [victoryFilter, setVictoryFilter] = useState('all');
+
+  const load = useCallback(async () => { const data = await api('/api/state'); if (data && data.team) setState(data); }, []);
+  const loadCoalesce = useCallback(async () => { const recs = await api('/api/coalesce'); setCoalesce(recs); }, []);
 
   // Verify saved session on mount
   useEffect(() => {
@@ -627,25 +640,6 @@ function App() {
     }
   }, []);
 
-  function handleLogin(user) { setCurrentUser(user); }
-  function handleLogout() {
-    api('/api/logout', { method: 'POST' });
-    clearToken();
-    setCurrentUser(null);
-    setState(null);
-  }
-
-  // If not logged in, show login screen
-  if (!currentUser || !getToken()) {
-    return <LoginScreen onLogin={handleLogin} />;
-  }
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const searchTimeout = useRef(null);
-
-  const load = useCallback(async () => { const data = await api('/api/state'); if (data && data.team) setState(data); }, []);
   useEffect(() => { if (currentUser) load(); }, [currentUser, load]);
 
   // Auto-refresh every 10 seconds so all team members see updates
@@ -655,10 +649,22 @@ function App() {
     return () => clearInterval(interval);
   }, [currentUser, load]);
 
+  useEffect(() => { if (state && state.intakeQueue && state.intakeQueue.length > 0) loadCoalesce(); }, [state?.intakeQueue?.length]);
+
+  function handleLogin(user) { setCurrentUser(user); }
+  function handleLogout() {
+    api('/api/logout', { method: 'POST' });
+    clearToken();
+    setCurrentUser(null);
+    setState(null);
+  }
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const loadCoalesce = useCallback(async () => { const recs = await api('/api/coalesce'); setCoalesce(recs); }, []);
-  useEffect(() => { if (state && state.intakeQueue && state.intakeQueue.length > 0) loadCoalesce(); }, [state?.intakeQueue?.length]);
+  // If not logged in, show login screen
+  if (!currentUser || !getToken()) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   // Live search
   function handleSearch(q) {
@@ -785,10 +791,6 @@ function App() {
   }
 
   // --- Project detail modal ---
-  const [detailProject, setDetailProject] = useState(null);
-  const [detailComments, setDetailComments] = useState([]);
-  const [commentText, setCommentText] = useState('');
-
   async function openProjectDetail(id) {
     const data = await api(`/api/project/${id}`);
     if (data && !data.error) {
@@ -803,11 +805,6 @@ function App() {
     if (c && c.id) setDetailComments(prev => [...prev, c]);
     setCommentText('');
   }
-
-  // --- Filters ---
-  const [intakeFilter, setIntakeFilter] = useState('all');
-  const [intakeSort, setIntakeSort] = useState('newest');
-  const [victoryFilter, setVictoryFilter] = useState('all');
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', badge: intakeQueue.length || null },
