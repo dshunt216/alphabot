@@ -114,6 +114,8 @@ function getDefaultData() {
     comments: {},
     notifications: {},
     botStatus: {},
+    attachments: {},
+    templates: [],
     activity: [
       { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
       { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
@@ -155,6 +157,8 @@ function loadData() {
       if (!data.comments) data.comments = {};
       if (!data.notifications) data.notifications = {};
       if (!data.botStatus) data.botStatus = {};
+      if (!data.attachments) data.attachments = {};
+      if (!data.templates) data.templates = [];
       saveData(data);
       return data;
     }
@@ -527,13 +531,13 @@ app.get('/api/project/:id', authenticate, (req, res) => {
   const id = req.params.id;
   // Check intake
   let project = data.intakeQueue.find(i => i.id === id);
-  if (project) return res.json({ ...project, _type: 'intake', _comments: data.comments[id] || [] });
+  if (project) return res.json({ ...project, _type: 'intake', _comments: data.comments[id] || [], _attachments: data.attachments[id] || [] });
   // Check busy
   project = data.busyBots.find(b => b.id === id);
-  if (project) return res.json({ ...project, _type: 'busy', _comments: data.comments[id] || [] });
+  if (project) return res.json({ ...project, _type: 'busy', _comments: data.comments[id] || [], _attachments: data.attachments[id] || [] });
   // Check victory
   project = data.hallOfVictory.find(v => v.id === id);
-  if (project) return res.json({ ...project, _type: 'victory', _comments: data.comments[id] || [] });
+  if (project) return res.json({ ...project, _type: 'victory', _comments: data.comments[id] || [], _attachments: data.attachments[id] || [] });
   return res.status(404).json({ error: 'Project not found' });
 });
 
@@ -572,6 +576,147 @@ app.put('/api/bot-status/:teamId', authenticate, (req, res) => {
   };
   saveData(data);
   res.json(data.botStatus[req.params.teamId]);
+});
+
+// --- Attachments ---
+app.get('/api/attachments/:projectId', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.attachments[req.params.projectId] || []);
+});
+
+app.post('/api/attachments/:projectId', authenticate, (req, res) => {
+  const data = loadData();
+  if (!data.attachments[req.params.projectId]) data.attachments[req.params.projectId] = [];
+  const att = {
+    id: uuidv4(),
+    name: req.body.name,
+    url: req.body.url,
+    type: req.body.type || 'link',
+    size: req.body.size || null,
+    addedBy: req.user.handler,
+    addedAt: new Date().toISOString()
+  };
+  data.attachments[req.params.projectId].push(att);
+  saveData(data);
+  res.json(att);
+});
+
+app.delete('/api/attachments/:projectId/:attachmentId', authenticate, (req, res) => {
+  const data = loadData();
+  const list = data.attachments[req.params.projectId] || [];
+  data.attachments[req.params.projectId] = list.filter(a => a.id !== req.params.attachmentId);
+  saveData(data);
+  res.json({ success: true });
+});
+
+// --- Templates ---
+app.get('/api/templates', authenticate, (req, res) => {
+  const data = loadData();
+  res.json(data.templates || []);
+});
+
+app.post('/api/templates', authenticate, (req, res) => {
+  const data = loadData();
+  const template = {
+    id: uuidv4(),
+    name: req.body.name,
+    title: req.body.title,
+    description: req.body.description || '',
+    category: req.body.category || 'general',
+    priority: req.body.priority || 'medium',
+    createdBy: req.user.handler,
+    createdAt: new Date().toISOString()
+  };
+  data.templates.push(template);
+  saveData(data);
+  res.json(template);
+});
+
+app.delete('/api/templates/:id', authenticate, (req, res) => {
+  const data = loadData();
+  data.templates = (data.templates || []).filter(t => t.id !== req.params.id);
+  saveData(data);
+  res.json({ success: true });
+});
+
+app.post('/api/templates/:id/use', authenticate, (req, res) => {
+  const data = loadData();
+  const template = (data.templates || []).find(t => t.id === req.params.id);
+  if (!template) return res.status(404).json({ error: 'Template not found' });
+  const item = {
+    id: uuidv4(),
+    title: template.title,
+    description: template.description,
+    category: template.category,
+    submittedBy: req.user.handler,
+    submittedAt: new Date().toISOString(),
+    priority: template.priority,
+    status: 'queued',
+    dueDate: req.body.dueDate || ''
+  };
+  data.intakeQueue.push(item);
+  addActivity(data, 'project_submitted', { handler: req.user.handler, detail: `${item.title} (from template)` });
+  data.team.forEach(t => {
+    if (t.handler !== req.user.handler) {
+      addNotification(data, t.handler, `${req.user.handler} created "${item.title}" from a template`, 'inbox', 'dashboard');
+    }
+  });
+  saveData(data);
+  res.json(item);
+});
+
+// --- CSV Export (supports token as query param for direct download) ---
+app.get('/api/export/csv', (req, res) => {
+  // Allow auth via query param for direct browser download
+  const token = req.headers['authorization']?.replace('Bearer ', '') || req.query.token;
+  if (!token || !sessions[token]) return res.status(401).json({ error: 'Not authenticated' });
+  const data = loadData();
+  const type = req.query.type || 'all';
+
+  function escapeCsv(val) {
+    const s = String(val == null ? '' : val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  let csv = '';
+  if (type === 'intake' || type === 'all') {
+    csv += 'Section: Intake Queue\n';
+    csv += 'Title,Category,Priority,Submitted By,Submitted At,Due Date,Status\n';
+    data.intakeQueue.forEach(i => {
+      csv += [i.title, i.category, i.priority, i.submittedBy, i.submittedAt, i.dueDate || '', i.status].map(escapeCsv).join(',') + '\n';
+    });
+    csv += '\n';
+  }
+  if (type === 'busy' || type === 'all') {
+    csv += 'Section: Busy Bots\n';
+    csv += 'Project,Handler,Bot,Started At,Due Date,Status\n';
+    data.busyBots.forEach(b => {
+      csv += [b.projectTitle, b.handler, b.botName, b.startedAt, b.dueDate || '', b.status].map(escapeCsv).join(',') + '\n';
+    });
+    csv += '\n';
+  }
+  if (type === 'victory' || type === 'all') {
+    csv += 'Section: Hall of Victory\n';
+    csv += 'Project,Handler,Bot,Started,Completed,Points,Awards,Deliverable URL,Notes\n';
+    data.hallOfVictory.forEach(v => {
+      csv += [v.projectTitle, v.handler, v.botName, v.startedAt, v.completedAt, v.points, v.awards.join('; '), v.deliverableUrl || '', v.completionNotes || ''].map(escapeCsv).join(',') + '\n';
+    });
+    csv += '\n';
+  }
+  if (type === 'team' || type === 'all') {
+    csv += 'Section: Team\n';
+    csv += 'Handler,Bot Name,Victories,Total Points\n';
+    data.team.forEach(t => {
+      const wins = data.hallOfVictory.filter(v => v.teamId === t.id).length;
+      const pts = data.hallOfVictory.filter(v => v.teamId === t.id).reduce((s, v) => s + v.points, 0);
+      csv += [t.handler, t.botName, wins, pts].map(escapeCsv).join(',') + '\n';
+    });
+  }
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename=alphabot-export-${new Date().toISOString().split('T')[0]}.csv`);
+  res.send(csv);
 });
 
 // --- Search ---
