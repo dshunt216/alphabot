@@ -15,18 +15,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Data Layer ---
 function getDefaultData() {
-  // Generate stable team IDs so sample data can reference them
-  const teamIds = [uuidv4(), uuidv4(), uuidv4(), uuidv4(), uuidv4(), uuidv4()];
-  const now = new Date();
-
   return {
     team: [
-      { id: teamIds[0], handler: 'Daniel', botName: "D'Vante", avatar: 'D' },
-      { id: teamIds[1], handler: 'Austin', botName: "D'Angelo", avatar: 'A' },
-      { id: teamIds[2], handler: 'Joe', botName: 'JoeB', avatar: 'J' },
-      { id: teamIds[3], handler: 'Kenny', botName: 'MallCop', avatar: 'K' },
-      { id: teamIds[4], handler: 'Dom', botName: 'Virgil Lablow', avatar: 'D' },
-      { id: teamIds[5], handler: 'Nick', botName: 'Gibson', avatar: 'N' }
+      { id: uuidv4(), handler: 'Daniel', botName: "D'Vante", avatar: 'D' },
+      { id: uuidv4(), handler: 'Austin', botName: "D'Angelo", avatar: 'A' },
+      { id: uuidv4(), handler: 'Joe', botName: 'JoeB', avatar: 'J' },
+      { id: uuidv4(), handler: 'Kenny', botName: 'MallCop', avatar: 'K' },
+      { id: uuidv4(), handler: 'Dom', botName: 'Virgil Lablow', avatar: 'D' },
+      { id: uuidv4(), handler: 'Nick', botName: 'Gibson', avatar: 'N' }
     ],
     users: [
       { id: uuidv4(), username: 'daniel', password: 'daniel123', handler: 'Daniel', role: 'admin' },
@@ -36,81 +32,9 @@ function getDefaultData() {
       { id: uuidv4(), username: 'dom', password: 'dom123', handler: 'Dom', role: 'member' },
       { id: uuidv4(), username: 'nick', password: 'nick123', handler: 'Nick', role: 'member' }
     ],
-    // --- SAMPLE DATA (clearly labeled) ---
-    intakeQueue: [
-      {
-        id: uuidv4(), title: '[SAMPLE] Inventory Reorder Alert System',
-        description: 'Automatically detect when warehouse inventory drops below threshold and send reorder alerts to the supplier portal. Needs SMS + email notifications.',
-        category: 'automation', submittedBy: 'Daniel', submittedAt: new Date(now - 2 * 86400000).toISOString(), priority: 'high', status: 'queued',
-        dueDate: new Date(now + 3 * 86400000).toISOString().split('T')[0]
-      },
-      {
-        id: uuidv4(), title: '[SAMPLE] Supplier Price Comparison Dashboard',
-        description: 'Pull pricing data from our top 5 suppliers and display a comparison dashboard. Track price history over time for inventory items.',
-        category: 'data', submittedBy: 'Austin', submittedAt: new Date(now - 1 * 86400000).toISOString(), priority: 'medium', status: 'queued',
-        dueDate: new Date(now + 7 * 86400000).toISOString().split('T')[0]
-      },
-      {
-        id: uuidv4(), title: '[SAMPLE] Warehouse Barcode Scanner App',
-        description: 'Mobile-friendly web app that uses the phone camera to scan product barcodes and update inventory counts in real time.',
-        category: 'interface', submittedBy: 'Kenny', submittedAt: new Date(now - 12 * 3600000).toISOString(), priority: 'medium', status: 'queued',
-        dueDate: new Date(now + 14 * 86400000).toISOString().split('T')[0]
-      },
-      {
-        id: uuidv4(), title: '[SAMPLE] Customer Return Processing Workflow',
-        description: 'Streamlined workflow for handling customer returns — auto-generate RMA numbers, update inventory, trigger refund process.',
-        category: 'workflow', submittedBy: 'Dom', submittedAt: new Date(now - 6 * 3600000).toISOString(), priority: 'low', status: 'queued',
-        dueDate: ''
-      }
-    ],
-    busyBots: [
-      {
-        id: uuidv4(), teamId: teamIds[0], handler: 'Daniel', botName: "D'Vante",
-        projectTitle: '[SAMPLE] Shipping Label Automation',
-        projectDescription: 'Auto-generate shipping labels from order data, pull carrier rates from UPS/FedEx APIs, and batch print for warehouse crew.',
-        startedAt: new Date(now - 4 * 3600000).toISOString(), status: 'in-progress',
-        dueDate: new Date(now + 2 * 86400000).toISOString().split('T')[0]
-      },
-      {
-        id: uuidv4(), teamId: teamIds[1], handler: 'Austin', botName: "D'Angelo",
-        projectTitle: '[SAMPLE] Customer Order Tracking Portal',
-        projectDescription: 'Self-service portal where wholesale customers can check their order status, view invoices, and see estimated delivery times.',
-        startedAt: new Date(now - 18 * 3600000).toISOString(), status: 'in-progress',
-        dueDate: new Date(now + 5 * 86400000).toISOString().split('T')[0]
-      }
-    ],
-    hallOfVictory: [
-      {
-        id: uuidv4(), teamId: teamIds[2], handler: 'Joe', botName: 'JoeB',
-        projectTitle: '[SAMPLE] Invoice PDF Generator',
-        projectDescription: 'Generates branded PDF invoices from order data with line items, tax calculations, and payment terms.',
-        startedAt: new Date(now - 5 * 86400000).toISOString(),
-        completedAt: new Date(now - 3 * 86400000).toISOString(),
-        elapsedMs: 2 * 86400000, points: 150, awards: ['Same Day Ship'],
-        deliverableUrl: 'https://github.com/example/invoice-generator',
-        completionNotes: '[SAMPLE] Built with Node.js + PDFKit. Pulls order data from the master spreadsheet API.'
-      },
-      {
-        id: uuidv4(), teamId: teamIds[3], handler: 'Kenny', botName: 'MallCop',
-        projectTitle: '[SAMPLE] Product Catalog Sync',
-        projectDescription: 'Syncs product catalog between Shopify storefront and internal inventory database every 15 minutes.',
-        startedAt: new Date(now - 7 * 86400000).toISOString(),
-        completedAt: new Date(now - 5 * 86400000).toISOString(),
-        elapsedMs: 2 * 86400000, points: 150, awards: ['First Blood'],
-        deliverableUrl: 'https://github.com/example/catalog-sync',
-        completionNotes: '[SAMPLE] Cron job runs every 15min. Handles SKU mapping and price updates. Dashboard at /admin/sync-status.'
-      },
-      {
-        id: uuidv4(), teamId: teamIds[5], handler: 'Nick', botName: 'Gibson',
-        projectTitle: '[SAMPLE] Daily Sales Report Email',
-        projectDescription: 'Automated daily email to management with sales totals, top products, and inventory warnings.',
-        startedAt: new Date(now - 4 * 86400000).toISOString(),
-        completedAt: new Date(now - 3.5 * 86400000).toISOString(),
-        elapsedMs: 12 * 3600000, points: 200, awards: ['Same Day Ship'],
-        deliverableUrl: 'https://github.com/example/daily-report',
-        completionNotes: '[SAMPLE] Sends at 7am EST via SendGrid. Pulls from Postgres sales table.'
-      }
-    ],
+    intakeQueue: [],
+    busyBots: [],
+    hallOfVictory: [],
     comments: {},
     notifications: {},
     botStatus: {},
@@ -118,25 +42,9 @@ function getDefaultData() {
     templates: [],
     mdFiles: [],
     prompts: [],
-    activity: [
-      { id: uuidv4(), type: 'project_submitted', handler: 'Daniel', detail: '[SAMPLE] Inventory Reorder Alert System', timestamp: new Date(now - 2 * 86400000).toISOString() },
-      { id: uuidv4(), type: 'project_submitted', handler: 'Austin', detail: '[SAMPLE] Supplier Price Comparison Dashboard', timestamp: new Date(now - 1 * 86400000).toISOString() },
-      { id: uuidv4(), type: 'bot_assigned', handler: 'Daniel', botName: "D'Vante", detail: '[SAMPLE] Shipping Label Automation', timestamp: new Date(now - 4 * 3600000).toISOString() },
-      { id: uuidv4(), type: 'bot_assigned', handler: 'Austin', botName: "D'Angelo", detail: '[SAMPLE] Customer Order Tracking Portal', timestamp: new Date(now - 18 * 3600000).toISOString() },
-      { id: uuidv4(), type: 'project_completed', handler: 'Nick', botName: 'Gibson', detail: '[SAMPLE] Daily Sales Report Email', points: 200, timestamp: new Date(now - 3.5 * 86400000).toISOString() },
-      { id: uuidv4(), type: 'project_completed', handler: 'Kenny', botName: 'MallCop', detail: '[SAMPLE] Product Catalog Sync', points: 150, timestamp: new Date(now - 5 * 86400000).toISOString() },
-      { id: uuidv4(), type: 'project_completed', handler: 'Joe', botName: 'JoeB', detail: '[SAMPLE] Invoice PDF Generator', points: 150, timestamp: new Date(now - 3 * 86400000).toISOString() },
-    ],
-    links: [
-      { id: uuidv4(), label: 'Team Google Drive', url: 'https://drive.google.com', category: 'drive' },
-      { id: uuidv4(), label: 'Master Spreadsheet', url: 'https://docs.google.com/spreadsheets', category: 'spreadsheet' },
-      { id: uuidv4(), label: 'Project Tracker Sheet', url: 'https://docs.google.com/spreadsheets', category: 'spreadsheet' }
-    ],
-    apiKeys: [
-      { id: uuidv4(), label: 'OpenAI API Key', key: 'sk-xxxx...configure-me', masked: true },
-      { id: uuidv4(), label: 'Anthropic API Key', key: 'sk-ant-xxxx...configure-me', masked: true },
-      { id: uuidv4(), label: 'Google Sheets API Key', key: 'AIza...configure-me', masked: true }
-    ]
+    activity: [],
+    links: [],
+    apiKeys: []
   };
 }
 
